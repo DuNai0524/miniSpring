@@ -1,4 +1,4 @@
-package cn.dunai.minis;
+package cn.dunai.minis.beans.factory.config;
 
 public class BeanDefinition {
     private String id;
