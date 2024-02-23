@@ -2,34 +2,35 @@ package cn.dunai.minis.context;
 
 import cn.dunai.minis.beans.BeansException;
 import cn.dunai.minis.beans.factory.BeanFactory;
-import cn.dunai.minis.beans.factory.SimpleBeanFactory;
-import cn.dunai.minis.beans.factory.config.BeanDefinition;
+import cn.dunai.minis.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor;
+import cn.dunai.minis.beans.factory.config.AutowireCapableBeanFactory;
+import cn.dunai.minis.beans.factory.config.BeanFactoryPostProcessor;
+import cn.dunai.minis.beans.factory.support.SimpleBeanFactory;
 import cn.dunai.minis.beans.factory.xml.XmlBeanDefinitionReader;
 import cn.dunai.minis.core.ClassPathXmlResource;
 import cn.dunai.minis.core.Resource;
-import org.dom4j.Document;
-import org.dom4j.Element;
-import org.dom4j.io.SAXReader;
 
-import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ClassPathXmlApplicationContext implements BeanFactory {
 
-    SimpleBeanFactory beanFactory;
+    AutowireCapableBeanFactory beanFactory;
 
-    public ClassPathXmlApplicationContext(String fileName) {
+    private final List<BeanFactoryPostProcessor> beanFactoryPostProcessors = new ArrayList<>();
+
+    public ClassPathXmlApplicationContext(String fileName) throws BeansException {
         this(fileName,true);
     }
 
-    public ClassPathXmlApplicationContext(String fileName, boolean isRefresh) {
+    public ClassPathXmlApplicationContext(String fileName, boolean isRefresh) throws BeansException {
         Resource resource = new ClassPathXmlResource(fileName);
-        SimpleBeanFactory simpleBeanFactory = new SimpleBeanFactory();
-        XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(simpleBeanFactory);
+        AutowireCapableBeanFactory beanFactory = new AutowireCapableBeanFactory();
+        XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader(beanFactory);
         reader.loadBeanDefinitions(resource);
-        this.beanFactory = simpleBeanFactory;
+        this.beanFactory = beanFactory;
         if (isRefresh){
-            this.beanFactory.refresh();
+            refresh();
         }
     }
 
@@ -55,5 +56,26 @@ public class ClassPathXmlApplicationContext implements BeanFactory {
 
     public Class<?> getType(String name) {
         return null;
+    }
+
+    public List<BeanFactoryPostProcessor> getBeanFactoryPostProcessors() {
+        return this.beanFactoryPostProcessors;
+    }
+
+    public void addBeanFactoryPostProcessor(BeanFactoryPostProcessor beanFactoryPostProcessor) {
+        this.beanFactoryPostProcessors.add(beanFactoryPostProcessor);
+    }
+
+    public void refresh() throws BeansException,IllegalStateException {
+        registerBeanPostProcessors(this.beanFactory);
+        onRefresh();
+    }
+
+    public void registerBeanPostProcessors (AutowireCapableBeanFactory beanFactory) {
+        beanFactory.addBeanPostProcessor(new AutowiredAnnotationBeanPostProcessor());
+    }
+
+    private void onRefresh() {
+        this.beanFactory.refresh();
     }
 }

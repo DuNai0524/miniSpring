@@ -1,12 +1,10 @@
-package cn.dunai.minis.beans.factory;
+package cn.dunai.minis.beans.factory.support;
 
 import cn.dunai.minis.beans.BeansException;
+import cn.dunai.minis.beans.factory.BeanFactory;
 import cn.dunai.minis.beans.factory.config.*;
-import cn.dunai.minis.beans.factory.support.DefaultSingletonBeanRegistry;
-import com.sun.org.apache.xpath.internal.operations.Bool;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -86,14 +84,14 @@ public class SimpleBeanFactory extends DefaultSingletonBeanRegistry implements B
     private void handleProperties(BeanDefinition bd, Class<?> clz,Object obj) {
         // 处理属性
         System.out.println("handle properties for bean:" + bd.getId());
-        PropertyValues propertyValues = bd.getPropertyValues();
-        if (!propertyValues.isEmpty()) {
-            for (int i = 0; i < propertyValues.size(); i++) {
-                PropertyValue propertyValue = propertyValues.getPropertyValueList().get(i);
-                String pType = propertyValue.getType();
-                String pName = propertyValue.getName();
-                Object pValue = propertyValue.getValue();
-                boolean isRef = propertyValue.isRef();
+        ConstructorPropertyValues constructorPropertyValues = bd.getPropertyValues();
+        if (!constructorPropertyValues.isEmpty()) {
+            for (int i = 0; i < constructorPropertyValues.size(); i++) {
+                ConstructorPropertyValue constructorPropertyValue = constructorPropertyValues.getPropertyValueList().get(i);
+                String pType = constructorPropertyValue.getType();
+                String pName = constructorPropertyValue.getName();
+                Object pValue = constructorPropertyValue.getValue();
+                boolean isRef = constructorPropertyValue.isRef();
                 Class<?>[]paramTypes = new Class<?>[1];
                 Object[] paramValues = new Object[1];
                 if(!isRef){ // 如果不是 ref，只是普通属性
@@ -148,26 +146,26 @@ public class SimpleBeanFactory extends DefaultSingletonBeanRegistry implements B
             clz = Class.forName(bd.getClassName());
 
             // handler constructor
-            ArgumentValues argumentValues = bd.getConstructorArgumentValues();
+            ConstructorArgumentValues constructorArgumentValues = bd.getConstructorArgumentValues();
             // 如果有参数
-            if (!argumentValues.isEmpty()) {
-                Class<?>[] paramTypes = new Class<?>[argumentValues.getArgumentCount()];
-                Object[] paramValues = new Object[argumentValues.getArgumentCount()];
+            if (!constructorArgumentValues.isEmpty()) {
+                Class<?>[] paramTypes = new Class<?>[constructorArgumentValues.getArgumentCount()];
+                Object[] paramValues = new Object[constructorArgumentValues.getArgumentCount()];
                 // 对于每一个参数，分数据类型分别处理
-                for (int i = 0; i < argumentValues.getArgumentCount(); i++) {
-                    ArgumentValue argumentValue = argumentValues.getIndexedArgumentValue(i);
-                    if ("String".equals(argumentValue.getType()) || "java.lang.String".equals(argumentValue.getType())) {
+                for (int i = 0; i < constructorArgumentValues.getArgumentCount(); i++) {
+                    ConstructorArgumentValue constructorArgumentValue = constructorArgumentValues.getIndexedArgumentValue(i);
+                    if ("String".equals(constructorArgumentValue.getType()) || "java.lang.String".equals(constructorArgumentValue.getType())) {
                         paramTypes[i] = String.class;
-                        paramValues[i] = argumentValue.getValue();
-                    } else if ("Integer".equals(argumentValue.getType()) || "java.lang.Integer".equals(argumentValue.getType())) {
+                        paramValues[i] = constructorArgumentValue.getValue();
+                    } else if ("Integer".equals(constructorArgumentValue.getType()) || "java.lang.Integer".equals(constructorArgumentValue.getType())) {
                         paramTypes[i] = Integer.class;
-                        paramValues[i] = Integer.parseInt((String) argumentValue.getValue());
-                    } else if ("int".equals(argumentValue.getType())) {
+                        paramValues[i] = Integer.parseInt((String) constructorArgumentValue.getValue());
+                    } else if ("int".equals(constructorArgumentValue.getType())) {
                         paramTypes[i] = int.class;
-                        paramValues[i] = Integer.parseInt((String) argumentValue.getValue());
+                        paramValues[i] = Integer.parseInt((String) constructorArgumentValue.getValue());
                     } else { // 默认 String
-                        paramTypes[i] = Class.forName(argumentValue.getType());
-                        paramValues[i] = argumentValue.getValue();
+                        paramTypes[i] = Class.forName(constructorArgumentValue.getType());
+                        paramValues[i] = constructorArgumentValue.getValue();
 
                     }
                 }

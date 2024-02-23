@@ -1,6 +1,6 @@
 package cn.dunai.minis.beans.factory.config;
 
-public class PropertyValue {
+public class ConstructorPropertyValue {
 
     private final String type;
 
@@ -10,7 +10,7 @@ public class PropertyValue {
 
     private final boolean isRef;
 
-    public PropertyValue(String type, String name, Object value, boolean isRef) {
+    public ConstructorPropertyValue(String type, String name, Object value, boolean isRef) {
         this.type = type;
         this.name = name;
         this.value = value;

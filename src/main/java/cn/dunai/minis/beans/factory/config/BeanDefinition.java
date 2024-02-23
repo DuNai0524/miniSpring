@@ -1,14 +1,12 @@
 package cn.dunai.minis.beans.factory.config;
 
-import java.util.PrimitiveIterator;
-
 public class BeanDefinition {
     String SCOPE_SINGLETON = "singleton";
     String SCOPE_PROTOTYPE = "prototype";
     private boolean lazyInit = false;
     private String[] dependsOn;
-    private ArgumentValues constructorArgumentValues;
-    private PropertyValues propertyValues;
+    private ConstructorArgumentValues constructorArgumentValues;
+    private ConstructorPropertyValues constructorPropertyValues;
     private String initMethodName;
     private volatile Object beanClass;
     private String id;
@@ -51,20 +49,20 @@ public class BeanDefinition {
         this.dependsOn = dependsOn;
     }
 
-    public ArgumentValues getConstructorArgumentValues() {
+    public ConstructorArgumentValues getConstructorArgumentValues() {
         return constructorArgumentValues;
     }
 
-    public void setConstructorArgumentValues(ArgumentValues constructorArgumentValues) {
+    public void setConstructorArgumentValues(ConstructorArgumentValues constructorArgumentValues) {
         this.constructorArgumentValues = constructorArgumentValues;
     }
 
-    public PropertyValues getPropertyValues() {
-        return propertyValues;
+    public ConstructorPropertyValues getPropertyValues() {
+        return constructorPropertyValues;
     }
 
-    public void setPropertyValues(PropertyValues propertyValues) {
-        this.propertyValues = propertyValues;
+    public void setPropertyValues(ConstructorPropertyValues constructorPropertyValues) {
+        this.constructorPropertyValues = constructorPropertyValues;
     }
 
     public String getInitMethodName() {
