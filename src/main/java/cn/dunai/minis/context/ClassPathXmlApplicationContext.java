@@ -37,9 +37,16 @@ public class ClassPathXmlApplicationContext implements BeanFactory {
     }
 
     @Override
-    public void registerBean(String beanName, Object obj) {
-        this.beanFactory.registerBean(beanName,obj);
+    public boolean isSingleton(String name) {
+        return false;
     }
 
+    @Override
+    public boolean isPrototype(String name) {
+        return false;
+    }
 
+    public Class<?> getType(String name) {
+        return null;
+    }
 }
