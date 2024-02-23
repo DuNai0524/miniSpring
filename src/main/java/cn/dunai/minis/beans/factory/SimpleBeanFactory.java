@@ -18,6 +18,8 @@ public class SimpleBeanFactory extends DefaultSingletonBeanRegistry implements B
     private Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>(256);
     private List<String> beanDefinitionNames = new ArrayList<>();
 
+    private final Map<String, Object> earlySingletonObjects = new HashMap<String, Object>(16);
+
     public SimpleBeanFactory() {
 
     }
@@ -41,64 +43,38 @@ public class SimpleBeanFactory extends DefaultSingletonBeanRegistry implements B
         Object singleton = this.getSingleton(beanName);
         // 如果此时没有这个 Bean 的实例，就要获取定义来创造实例
         if (singleton == null) {
-            // 获取 bean 的定义
-            BeanDefinition beanDefinition = beanDefinitionMap.get(beanName);
-            if(beanDefinition == null) {
-                throw new BeansException("No such bean.");
+            // 获取 bean 的定义，如果没有实例，则尝试从毛胚模型中获取
+            singleton = this.earlySingletonObjects.get(beanName);
+            if (singleton == null) {
+                BeanDefinition beanDefinition = beanDefinitionMap.get(beanName);
+                if (beanDefinition == null) {
+                    throw new BeansException("No such bean.");
+                }
+                try {
+                    singleton = Class.forName(beanDefinition.getClassName()).newInstance();
+                } catch (ClassNotFoundException e) {
+                    throw new RuntimeException(e);
+                } catch (InstantiationException e) {
+                    throw new RuntimeException(e);
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+                // 新注册这个 bean 实例
+                this.registerSingleton(beanName, singleton);
             }
-            try{
-                singleton = Class.forName(beanDefinition.getClassName()).newInstance();
-            } catch (ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            } catch (InstantiationException e) {
-                throw new RuntimeException(e);
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
-            // 新注册这个 bean 实例
-            this.registerSingleton(beanName, singleton);
         }
         return singleton;
     }
 
     private Object createBean(BeanDefinition beanDefinition) {
         Class<?> clz = null;
-        Object obj = null;
+        // 创建毛胚 bean 实例
+        Object obj = doCreateBean(beanDefinition);
         Constructor<?> con = null;
+        // 存放到毛胚实例缓存中
+        this.earlySingletonObjects.put(beanDefinition.getId(), obj);
         try {
             clz = Class.forName(beanDefinition.getClassName());
-            ArgumentValues argumentValues = beanDefinition.getConstructorArgumentValues();
-            // 如果有参数
-            if (!argumentValues.isEmpty()) {
-                Class<?>[] paramTypes = new Class<?>[argumentValues.getArgumentCount()];
-                Object[] paramValues = new Object[argumentValues.getArgumentCount()];
-                // 对于每一个参数，分数据类型分别处理
-                for (int i = 0; i < argumentValues.getArgumentCount(); i++) {
-                    ArgumentValue argumentValue = argumentValues.getIndexedArgumentValue(i);
-                    if ("String".equals(argumentValue.getType()) || "java.lang.String".equals(argumentValue.getType())) {
-                        paramTypes[i] = String.class;
-                        paramValues[i] = argumentValue.getValue();
-                    } else if ("Integer".equals(argumentValue.getType()) || "java.lang.Integer".equals(argumentValue.getType())) {
-                        paramTypes[i] = Integer.class;
-                        paramValues[i] = Integer.parseInt((String) argumentValue.getValue());
-                    } else if ("int".equals(argumentValue.getType())) {
-                        paramTypes[i] = int.class;
-                        paramValues[i] = Integer.parseInt((String) argumentValue.getValue());
-                    } else { // 默认 String
-                        paramTypes[i] = Class.forName(argumentValue.getType());
-                        paramValues[i] = argumentValue.getValue();
-
-                    }
-                }
-                try {
-                    con = clz.getConstructor(paramTypes);
-                    obj = con.newInstance(paramValues);
-                } catch (Exception e) {
-
-                }
-            } else {
-                obj = clz.newInstance();
-            }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -158,6 +134,65 @@ public class SimpleBeanFactory extends DefaultSingletonBeanRegistry implements B
                 }catch (Exception e){
 
                 }
+            }
+        }
+    }
+
+    // doCreateBean 创建毛胚实例，仅仅调用构造方法，没有进行属性处理
+    private Object doCreateBean(BeanDefinition bd) {
+        Class<?> clz = null;
+        Object obj = null;
+        Constructor<?> con = null;
+
+        try{
+            clz = Class.forName(bd.getClassName());
+
+            // handler constructor
+            ArgumentValues argumentValues = bd.getConstructorArgumentValues();
+            // 如果有参数
+            if (!argumentValues.isEmpty()) {
+                Class<?>[] paramTypes = new Class<?>[argumentValues.getArgumentCount()];
+                Object[] paramValues = new Object[argumentValues.getArgumentCount()];
+                // 对于每一个参数，分数据类型分别处理
+                for (int i = 0; i < argumentValues.getArgumentCount(); i++) {
+                    ArgumentValue argumentValue = argumentValues.getIndexedArgumentValue(i);
+                    if ("String".equals(argumentValue.getType()) || "java.lang.String".equals(argumentValue.getType())) {
+                        paramTypes[i] = String.class;
+                        paramValues[i] = argumentValue.getValue();
+                    } else if ("Integer".equals(argumentValue.getType()) || "java.lang.Integer".equals(argumentValue.getType())) {
+                        paramTypes[i] = Integer.class;
+                        paramValues[i] = Integer.parseInt((String) argumentValue.getValue());
+                    } else if ("int".equals(argumentValue.getType())) {
+                        paramTypes[i] = int.class;
+                        paramValues[i] = Integer.parseInt((String) argumentValue.getValue());
+                    } else { // 默认 String
+                        paramTypes[i] = Class.forName(argumentValue.getType());
+                        paramValues[i] = argumentValue.getValue();
+
+                    }
+                }
+                try {
+                    con = clz.getConstructor(paramTypes);
+                    obj = con.newInstance(paramValues);
+                } catch (Exception e) {
+
+                }
+            } else {
+                obj = clz.newInstance();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        System.out.println(bd.getId() + "bean created." + bd.getClassName() + " : " + obj.toString());
+        return obj;
+    }
+
+    public void refresh() {
+        for (String beanName : beanDefinitionNames) {
+            try{
+                getBean(beanName);
+            } catch (BeansException e) {
+                throw new RuntimeException(e);
             }
         }
     }
