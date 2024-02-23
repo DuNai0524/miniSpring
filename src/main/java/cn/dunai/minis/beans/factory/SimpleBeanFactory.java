@@ -1,10 +1,13 @@
 package cn.dunai.minis.beans.factory;
 
 import cn.dunai.minis.beans.BeansException;
-import cn.dunai.minis.beans.factory.config.BeanDefinition;
+import cn.dunai.minis.beans.factory.config.*;
 import cn.dunai.minis.beans.factory.support.DefaultSingletonBeanRegistry;
 import com.sun.org.apache.xpath.internal.operations.Bool;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -56,6 +59,107 @@ public class SimpleBeanFactory extends DefaultSingletonBeanRegistry implements B
             this.registerSingleton(beanName, singleton);
         }
         return singleton;
+    }
+
+    private Object createBean(BeanDefinition beanDefinition) {
+        Class<?> clz = null;
+        Object obj = null;
+        Constructor<?> con = null;
+        try {
+            clz = Class.forName(beanDefinition.getClassName());
+            ArgumentValues argumentValues = beanDefinition.getConstructorArgumentValues();
+            // 如果有参数
+            if (!argumentValues.isEmpty()) {
+                Class<?>[] paramTypes = new Class<?>[argumentValues.getArgumentCount()];
+                Object[] paramValues = new Object[argumentValues.getArgumentCount()];
+                // 对于每一个参数，分数据类型分别处理
+                for (int i = 0; i < argumentValues.getArgumentCount(); i++) {
+                    ArgumentValue argumentValue = argumentValues.getIndexedArgumentValue(i);
+                    if ("String".equals(argumentValue.getType()) || "java.lang.String".equals(argumentValue.getType())) {
+                        paramTypes[i] = String.class;
+                        paramValues[i] = argumentValue.getValue();
+                    } else if ("Integer".equals(argumentValue.getType()) || "java.lang.Integer".equals(argumentValue.getType())) {
+                        paramTypes[i] = Integer.class;
+                        paramValues[i] = Integer.parseInt((String) argumentValue.getValue());
+                    } else if ("int".equals(argumentValue.getType())) {
+                        paramTypes[i] = int.class;
+                        paramValues[i] = Integer.parseInt((String) argumentValue.getValue());
+                    } else { // 默认 String
+                        paramTypes[i] = Class.forName(argumentValue.getType());
+                        paramValues[i] = argumentValue.getValue();
+
+                    }
+                }
+                try {
+                    con = clz.getConstructor(paramTypes);
+                    obj = con.newInstance(paramValues);
+                } catch (Exception e) {
+
+                }
+            } else {
+                obj = clz.newInstance();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        handleProperties(beanDefinition, clz, obj);
+        return obj;
+    }
+
+    private void handleProperties(BeanDefinition bd, Class<?> clz,Object obj) {
+        // 处理属性
+        System.out.println("handle properties for bean:" + bd.getId());
+        PropertyValues propertyValues = bd.getPropertyValues();
+        if (!propertyValues.isEmpty()) {
+            for (int i = 0; i < propertyValues.size(); i++) {
+                PropertyValue propertyValue = propertyValues.getPropertyValueList().get(i);
+                String pType = propertyValue.getType();
+                String pName = propertyValue.getName();
+                Object pValue = propertyValue.getValue();
+                boolean isRef = propertyValue.isRef();
+                Class<?>[]paramTypes = new Class<?>[1];
+                Object[] paramValues = new Object[1];
+                if(!isRef){ // 如果不是 ref，只是普通属性
+                    // 对每一个属性，分数据分类型处理
+                    if ("String".equals(pType) || "java.lang.String".equals(pType)) {
+                        paramTypes[0] = String.class;
+                    } else if ("Integer".equals(pType) || "java.lang.Integer".equals(pType)) {
+                        paramTypes[0] = Integer.class;
+                    } else if ("int".equals(pType)) {
+                        paramTypes[0] = int.class;
+                    } else { // 默认 String
+                        paramTypes[0] = String.class;
+                    }
+                    paramValues[0] = pValue;
+                }else{
+                    try{
+                        paramTypes[0] = Class.forName(pType);
+                    }catch (Exception e){
+                        throw new RuntimeException(e);
+                    }
+                    try{
+                        paramValues[0] = getBean((String)pValue);
+                    }catch (Exception e){
+                        throw new RuntimeException(e);
+                    }
+                }
+
+                // 按照 setXxxx 规范查找 setter 方法，调用 setter 方法设置属性
+                String methodName = "set" + pName.substring(0,1).toUpperCase() + pName.substring(1);
+                Method method = null;
+                try{
+                    method = clz.getMethod(methodName,paramTypes);
+                }catch (Exception e){
+
+                }
+                try{
+                    method.invoke(obj,paramValues);
+                }catch (Exception e){
+
+                }
+            }
+        }
     }
 
     public void removeBeanDefinition(String name){

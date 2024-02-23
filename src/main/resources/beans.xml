@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <beans>
     <bean id="aservice" class="cn.dunai.minis.test.AServiceImpl">
+        <construct-arg type="String" name="name" value="abc" />
+        <construct-arg type="int" name="level" value="3" />
         <property type="String" name="property1" value="Hello World!" />
+        <property type="String" name="property2" value="Someone Says" />
     </bean>
 </beans>
